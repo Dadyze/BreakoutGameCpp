@@ -174,10 +174,10 @@ void collisionTest(Blok& mBrick, Lopta& mBall)
 void reset() {
     Lopta ball{ sirinaEkrana / 2, visinaEkrana / 2 };
     vector<Blok> blokovi;
-    for (int iX = 0; iX < brojBlokovaX; ++iX)
-        for (int iY = 0; iY < brojBlokovaY; ++iY)
+    for (int iX = 1;iX <=brojBlokovaX; iX++)
+        for (int iY = 1;iY <=brojBlokovaY; iY++)
             blokovi.emplace_back(
-                (iX + 1) * (sirinaBloka + 3) + 22, (iY + 2) * (visinaBloka + 3));
+                iX * (sirinaBloka + 3) + 22, (iY + 1)* (visinaBloka + 3));
 }
 
 int main()
@@ -187,12 +187,12 @@ int main()
     RenderWindow window(VideoMode(sirinaEkrana, visinaEkrana), "Grupa9 (OOP), BreakoutGame");
     window.setFramerateLimit(60);
 
-    Reket paddle(sirinaEkrana / 2, visinaEkrana - 50);
+    Reket paddle(sirinaEkrana / 2, visinaEkrana - 20);
     //prvi put da mi je u zivotu pala ideja da koristim GOTO naredbu jer ovo je mislim rijetka situacija
     //pravimo loptu i cigle
 restart:
     radi = true;
-    Lopta ball{ sirinaEkrana / 2, visinaEkrana / 2 };
+    Lopta ball(sirinaEkrana / 2, visinaEkrana / 2);
     vector<Blok> blokovi;
     for (int iX = 0; iX < brojBlokovaX; ++iX)
         for (int iY = 0; iY < brojBlokovaY; ++iY)
