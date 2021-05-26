@@ -3,12 +3,9 @@
 // Objektno-orijentisano programiranje
 // Grupa9: Lamija Imamoviæ, Adin Jahiæ, Muharem Keleštura, Elmin Marevac
 // Naziv projekta: Breakout Game (c++)
-// V1.0 Made by: Adin Jahic, Lamija Imamovic (3.1.2012)
+
 // Copyright ©2021
 //--------------------------------------------------------------------------
-// Napravljen prototip igre, kod nije struktuiran, oèekuje se dorada od ostalih èlanova po dogovoru
-// prilikom izdavanja V2.0,(sistem bodovanja,ispisa uspjeha na fajl dodatne modifikacije i uklanjanje glitcheva).
-// Dokumentacija u izradi,korišteni komentari u ovoj verziji.
 
 
 #include <SFML/Graphics.hpp>
@@ -29,13 +26,14 @@ const float sirinaBloka = 60.0;
 const float visinaBloka = 20.0;
 const int brojBlokovaX = 11;
 const int brojBlokovaY = 6;
-bool radi = true;
 
 
 struct Lopta
 {
     CircleShape oblik;
     Vector2f vektorBrzineLopte{ -brzinaLopte, -brzinaLopte };
+
+    bool izvanGranica = false;
 
     float x() { return oblik.getPosition().x; }
     float y() { return oblik.getPosition().y; }
@@ -66,10 +64,17 @@ struct Lopta
         if (gornjaStrana() < 0)
             vektorBrzineLopte.y = brzinaLopte;
         //u slucaju ako je preleti dole zelimo prekinut igru jer je to kriterijum
-        else if (donjaStrana() > visinaEkrana)
-            radi = false;
+        else if (donjaStrana() > visinaEkrana) {
+            izvanGranica = true;
+
+        }
+            
     }
 
+    bool daLiJeIzvanGranica()
+    {
+        return izvanGranica;
+    }
 };
 
 //pravimo strukturu praouganoik za cigle koje treba razbit
@@ -113,6 +118,7 @@ struct Reket : public basicBlok
             vektorBrzineReketa.x = 0;
     }
 };
+
 // eh sad moramo napravit cigle koje razbijamo
 struct Blok : public basicBlok
 {
@@ -127,58 +133,186 @@ struct Blok : public basicBlok
     }
 };
 
-//koristeci generike u c++ programskom jeziku cemo rijesiti probleme kolizije jer imamo
-//2 slucaja kolizije, prvi je izmedju lopte i glavne cigle i lopte i ostalih cigli
-template <class T1, class T2>
-bool dirajulSe(T1& mA, T2& mB)
+struct Runner
 {
-    //ako se koordinate poklope logicno je da se desio dodir
-    return mA.desnaStrana() >= mB.lijevaStrana() && mA.lijevaStrana() <= mB.desnaStrana() &&
-        mA.donjaStrana() >= mB.gornjaStrana() && mA.gornjaStrana() <= mB.donjaStrana();
-}
+    Color bgColor = Color::Color(49, 79, 79);
+    Font font;
+    int highscore = 0;
 
-void collisionTest(Reket& mPaddle, Lopta& mBall)
-{
-    if (!dirajulSe(mPaddle, mBall)) return;
+    Runner()
+    {
+        if (!font.loadFromFile("fonts/arial.ttf"))
+            std::cout << "Can't find the font file" << std::endl;
+    }
 
-    mBall.vektorBrzineLopte.y = -brzinaLopte;
-    if (mBall.x() < mPaddle.x())
-        mBall.vektorBrzineLopte.x = -brzinaLopte;
-    else
-        mBall.vektorBrzineLopte.x = brzinaLopte;
-}
+    void renderStart(RenderWindow& window)
+    {
+        Text startText;
+        startText.setFont(font);
+        startText.setString("Press space to start");
+        startText.setFillColor(Color::Black);
+        startText.setCharacterSize(30);
+        startText.setPosition(sirinaEkrana/2 - startText.getGlobalBounds().width / 2, visinaEkrana/2);
 
+        Text hisghscoreText;
+        hisghscoreText.setFont(font);
+        hisghscoreText.setStyle(Text::Bold);
+        hisghscoreText.setString("Highscore: " + to_string(highscore));
+        hisghscoreText.setFillColor(Color::Black);
+        hisghscoreText.setCharacterSize(48);
+        hisghscoreText.setPosition(sirinaEkrana / 2 - hisghscoreText.getGlobalBounds().width / 2, visinaEkrana / 2 - 75);
 
-void collisionTest(Blok& mBrick, Lopta& mBall)
-{
-    if (!dirajulSe(mBrick, mBall)) return;
-    mBrick.pogodjena = true;
+        Text Title;
+        Title.setFont(font);
+        Title.setString("BREAKOUT GAME ");
+        Title.setFillColor(Color::Black);
+        Title.setCharacterSize(64);
+        Title.setPosition(sirinaEkrana / 2 - Title.getGlobalBounds().width / 2, visinaEkrana / 2 - 170);
+        while (window.isOpen())
+        {
+            Event event;
+            while (window.pollEvent(event))
+            {
+                switch (event.type)
+                {
+                case Event::Closed:
+                {
+                    window.close();
+                    break;
+                }
+                case Event::KeyReleased:
+                {
+                    if (event.key.code == Keyboard::Space) {
+                        startGame(window);
+                    }
+                    break;
+                }
+                break;
+                }
+            }
 
-    float kontaktLijevo = mBall.desnaStrana() - mBrick.lijevaStrana();
-    float kontaktDesno = mBrick.desnaStrana() - mBall.lijevaStrana();
-    float kontaktGore = mBall.donjaStrana() - mBrick.gornjaStrana();
-    float kontaktDole = mBrick.donjaStrana() - mBall.gornjaStrana();
+            window.clear(bgColor);
 
-    bool dodirLijevo = abs(kontaktLijevo) < abs(kontaktDesno);
-    bool dodirGore = abs(kontaktGore) < abs(kontaktDole);
+            window.draw(startText);
+            window.draw(hisghscoreText);
+            window.draw(Title);
+            window.display();
+        }
 
-    float dodirX = dodirLijevo ? kontaktLijevo : kontaktDesno ;
-    float dodirY = dodirGore ? kontaktGore : kontaktDole;
+    }
 
-    if (abs(dodirX) < abs(dodirY))
-        mBall.vektorBrzineLopte.x = dodirLijevo ? -brzinaLopte : brzinaLopte;
-    else
-        mBall.vektorBrzineLopte.y = dodirGore ? -brzinaLopte : brzinaLopte;
-}
+    void startGame(RenderWindow& window)
+    {
+        Text scoreText;
+        scoreText.setFont(font);
+        scoreText.setFillColor(Color::White);
+        scoreText.setCharacterSize(18);
+        scoreText.setPosition(10, 10);
 
-void reset() {
-    Lopta ball{ sirinaEkrana / 2, visinaEkrana / 2 };
-    vector<Blok> blokovi;
-    for (int iX = 1;iX <=brojBlokovaX; iX++)
-        for (int iY = 1;iY <=brojBlokovaY; iY++)
-            blokovi.emplace_back(
-                iX * (sirinaBloka + 3) + 22, (iY + 1)* (visinaBloka + 3));
-}
+        Reket paddle(sirinaEkrana / 2, visinaEkrana - 20);
+        Lopta ball(sirinaEkrana / 2, visinaEkrana / 2);
+        vector<Blok> blokovi;
+        for (int iX = 0; iX < brojBlokovaX; ++iX)
+            for (int iY = 0; iY < brojBlokovaY; ++iY)
+                blokovi.emplace_back(
+                    (iX + 1) * (sirinaBloka + 3) + 22, (iY + 2) * (visinaBloka + 3));
+
+        while (window.isOpen())
+        {
+            Event event;
+            while (window.pollEvent(event))
+            {
+                switch (event.type)
+                {
+                case Event::Closed:
+                {
+                    window.close();
+                    break;
+                }
+                case Event::KeyReleased:
+                {
+                    if (event.key.code == Keyboard::Escape || event.key.code == Keyboard::Space) {
+                        renderStart(window);
+                    }
+                    break;
+                }
+
+                break;
+                }
+            }
+
+            ball.update();
+            paddle.update();
+            collisionTest(paddle, ball);
+            for (auto& blok : blokovi) collisionTest(blok, ball);
+            blokovi.erase(remove_if(begin(blokovi), end(blokovi),
+                [](const Blok& mBrick)
+                {
+                    return mBrick.pogodjena;
+                }),
+                end(blokovi));
+
+            if (ball.daLiJeIzvanGranica())
+            {
+                renderStart(window);
+            }
+
+            int score = brojBlokovaX * brojBlokovaY - blokovi.size();
+            
+            if (score > highscore) {
+                highscore = score;
+            }
+
+            scoreText.setString("Score: " + to_string(score));
+
+            window.clear(bgColor);
+            window.draw(scoreText);
+            window.draw(ball.oblik);
+            window.draw(paddle.oblik);
+            for (auto& blok : blokovi) window.draw(blok.oblik);
+
+            window.display();
+        }
+
+    }
+
+    void collisionTest(Reket& mPaddle, Lopta& mBall)
+    {
+        if (! (mPaddle.desnaStrana() >= mBall.lijevaStrana() && mPaddle.lijevaStrana() <= mBall.desnaStrana() &&
+            mPaddle.donjaStrana() >= mBall.gornjaStrana() && mPaddle.gornjaStrana() <= mBall.donjaStrana())) return;
+
+        mBall.vektorBrzineLopte.y = -brzinaLopte;
+        if (mBall.x() < mPaddle.x())
+            mBall.vektorBrzineLopte.x = -brzinaLopte;
+        else
+            mBall.vektorBrzineLopte.x = brzinaLopte;
+    }
+
+    void collisionTest(Blok& mBrick, Lopta& mBall)
+    {
+        if (!(mBrick.desnaStrana() >= mBall.lijevaStrana() && mBrick.lijevaStrana() <= mBall.desnaStrana() &&
+            mBrick.donjaStrana() >= mBall.gornjaStrana() && mBrick.gornjaStrana() <= mBall.donjaStrana())) return;
+
+        mBrick.pogodjena = true;
+
+        float kontaktLijevo = mBall.desnaStrana() - mBrick.lijevaStrana();
+        float kontaktDesno = mBrick.desnaStrana() - mBall.lijevaStrana();
+        float kontaktGore = mBall.donjaStrana() - mBrick.gornjaStrana();
+        float kontaktDole = mBrick.donjaStrana() - mBall.gornjaStrana();
+
+        bool dodirLijevo = abs(kontaktLijevo) < abs(kontaktDesno);
+        bool dodirGore = abs(kontaktGore) < abs(kontaktDole);
+
+        float dodirX = dodirLijevo ? kontaktLijevo : kontaktDesno;
+        float dodirY = dodirGore ? kontaktGore : kontaktDole;
+
+        if (abs(dodirX) < abs(dodirY))
+            mBall.vektorBrzineLopte.x = dodirLijevo ? -brzinaLopte : brzinaLopte;
+        else
+            mBall.vektorBrzineLopte.y = dodirGore ? -brzinaLopte : brzinaLopte;
+    }
+
+};
 
 int main()
 {
@@ -187,54 +321,10 @@ int main()
     RenderWindow window(VideoMode(sirinaEkrana, visinaEkrana), "Grupa9 (OOP), BreakoutGame");
     window.setFramerateLimit(60);
 
-    Reket paddle(sirinaEkrana / 2, visinaEkrana - 20);
-    //prvi put da mi je u zivotu pala ideja da koristim GOTO naredbu jer ovo je mislim rijetka situacija
-    //pravimo loptu i cigle
-restart:
-    radi = true;
-    Lopta ball(sirinaEkrana / 2, visinaEkrana / 2);
-    vector<Blok> blokovi;
-    for (int iX = 0; iX < brojBlokovaX; ++iX)
-        for (int iY = 0; iY < brojBlokovaY; ++iY)
-            blokovi.emplace_back(
-                (iX + 1) * (sirinaBloka + 3) + 22, (iY + 2) * (visinaBloka + 3));
+    Runner runner;
 
-
-    while (true) // ovo je glavna petlja igre
-    {
-        window.clear(Color::Color(49, 79, 79));
-
-        if (Keyboard::isKeyPressed(Keyboard::Key::Space))
-            goto restart;
-        if (Keyboard::isKeyPressed(Keyboard::Key::Escape))
-            break;
-
-        ball.update();
-        paddle.update();
-        collisionTest(paddle, ball);
-        for (auto& blok : blokovi) collisionTest(blok, ball);
-        blokovi.erase(remove_if(begin(blokovi), end(blokovi),
-            [](const Blok& mBrick)
-            {
-                return mBrick.pogodjena;
-            }),
-            end(blokovi));
-
-        if (radi)
-        {
-            window.draw(ball.oblik);
-            window.draw(paddle.oblik);
-            for (auto& blok : blokovi) window.draw(blok.oblik);
-        }
-
-        else
-                goto restart;
-
-        
-
-        window.display();
-
-    }
+    // Render screen with Start button
+    runner.renderStart(window);
 
 }
 
